@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
+import NotificationsDropdown from '@/components/NotificationsDropdown';
 import type { Role } from '@/types/database';
 
 interface NavItem {
@@ -10,6 +11,12 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: '/', label: 'Dashboard', roles: ['gentleman', 'captain', 'headmaster', 'officer', 'alumni'] },
+  { to: '/sessions', label: 'Sessions', roles: ['gentleman', 'captain', 'headmaster'] },
+  { to: '/assessments', label: 'Assessments', roles: ['gentleman', 'captain', 'headmaster'] },
+  { to: '/leaderboard', label: 'Leaderboard', roles: ['gentleman', 'captain', 'headmaster'] },
+  { to: '/messages', label: 'Messages', roles: ['gentleman', 'captain', 'headmaster', 'officer'] },
+  { to: '/payment', label: 'Payment', roles: ['gentleman'] },
+  { to: '/export', label: 'Export', roles: ['headmaster'] },
   { to: '/profile', label: 'Profile', roles: ['gentleman', 'captain', 'headmaster', 'officer', 'alumni'] },
 ];
 
@@ -32,16 +39,14 @@ export default function AppShell() {
           <Link to="/" className="flex items-center gap-3">
             <span className="font-serif text-2xl text-brass">Accelerator Academy</span>
           </Link>
-          <nav className="flex items-center gap-6">
+          <nav className="flex items-center gap-4 overflow-x-auto">
             {visible.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
                 className={({ isActive }) =>
-                  `text-sm font-medium transition ${
-                    isActive ? 'text-brass' : 'text-slate-300 hover:text-slate-100'
-                  }`
+                  `whitespace-nowrap text-sm font-medium transition ${isActive ? 'text-brass' : 'text-slate-300 hover:text-slate-100'}`
                 }
               >
                 {item.label}
@@ -49,13 +54,12 @@ export default function AppShell() {
             ))}
           </nav>
           <div className="flex items-center gap-4">
-            <div className="text-right text-xs">
+            <NotificationsDropdown />
+            <div className="hidden text-right text-xs sm:block">
               <div className="font-medium text-slate-100">{profile?.name ?? 'Unnamed'}</div>
               <div className="text-slate-500">{role ? ROLE_LABEL[role] : '—'}</div>
             </div>
-            <button onClick={signOut} className="btn">
-              Sign out
-            </button>
+            <button onClick={signOut} className="btn">Sign out</button>
           </div>
         </div>
       </header>
