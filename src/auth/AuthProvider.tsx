@@ -37,43 +37,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Failsafe: no matter what else happens, never leave loading=true
+    // for more than 4 seconds. If the bootstrap hangs (slow network,
+    // stuck refresh, whatever), the user will see the sign-in page
+    // instead of a blank "Loading…" screen.
+    const failsafe = setTimeout(() => {
+      if (mounted) {
+        console.warn('[auth] bootstrap failsafe fired after 4s');
+        setLoading(false);
+      }
+    }, 4000);
+
     (async () => {
       try {
-        // Read whatever is in localStorage, then force a refresh so the
-        // access token is guaranteed fresh before any queries fire.
-        const { data: existing } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         if (!mounted) return;
-
-        if (existing.session) {
-          const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
-          if (!mounted) return;
-          if (refreshErr) {
-            // Refresh failed — token is unusable. Clear the session entirely
-            // so the user gets bounced to sign-in instead of hanging.
-            await supabase.auth.signOut();
-            setSession(null);
-            setProfile(null);
-            setLoading(false);
-            return;
+        setSession(data.session);
+        if (data.session?.user) {
+          try {
+            await loadProfile(data.session.user.id);
+          } catch (err) {
+            console.error('[auth] loadProfile error', err);
           }
-          setSession(refreshed.session ?? existing.session);
-          const uid = (refreshed.session ?? existing.session)?.user?.id;
-          if (uid) await loadProfile(uid);
-        } else {
-          setSession(null);
         }
       } catch (err) {
-        console.error('[auth] bootstrap error', err);
-        if (mounted) setSession(null);
+        console.error('[auth] getSession error', err);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          clearTimeout(failsafe);
+          setLoading(false);
+        }
       }
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      if (!mounted) return;
       setSession(newSession);
       if (newSession?.user) {
-        await loadProfile(newSession.user.id);
+        try {
+          await loadProfile(newSession.user.id);
+        } catch (err) {
+          console.error('[auth] loadProfile error (state change)', err);
+        }
       } else {
         setProfile(null);
       }
@@ -81,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(failsafe);
       sub.subscription.unsubscribe();
     };
   }, [loadProfile]);

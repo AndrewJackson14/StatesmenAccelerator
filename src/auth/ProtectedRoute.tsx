@@ -9,13 +9,16 @@ interface Props {
 }
 
 export default function ProtectedRoute({ children, allow }: Props) {
-  const { session, role, loading } = useAuth();
+  const { session, role, loading, signOut } = useAuth();
   const location = useLocation();
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-slate-400">
-        Loading…
+      <div className="flex h-screen flex-col items-center justify-center gap-4 text-slate-400">
+        <div className="text-sm">Loading…</div>
+        <button className="btn text-xs" onClick={() => signOut()}>
+          Having trouble? Sign out
+        </button>
       </div>
     );
   }
