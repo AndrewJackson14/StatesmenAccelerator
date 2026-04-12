@@ -127,6 +127,7 @@ function StepProfileSetup({ uid, onNext }: { uid: string; onNext: () => void }) 
   const [age, setAge] = useState('');
   const [location, setLocation] = useState('');
   const [phone, setPhone] = useState('');
+  const [smsOptIn, setSmsOptIn] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,16 +136,25 @@ function StepProfileSetup({ uid, onNext }: { uid: string; onNext: () => void }) 
       setError('Name is required.');
       return;
     }
+    if (phone.trim() && !smsOptIn) {
+      setError('Please check the SMS consent box or leave phone blank.');
+      return;
+    }
     setSaving(true);
+    const updates: Record<string, unknown> = {
+      name: name.trim(),
+      age: age ? parseInt(age) : null,
+      location: location.trim() || null,
+      phone: phone.trim() || null,
+      onboarding_step: 'profile_setup',
+    };
+    if (phone.trim() && smsOptIn) {
+      updates.sms_opt_in = true;
+      updates.sms_opt_in_at = new Date().toISOString();
+    }
     const { error: dbErr } = await supabase
       .from('profiles')
-      .update({
-        name: name.trim(),
-        age: age ? parseInt(age) : null,
-        location: location.trim() || null,
-        phone: phone.trim() || null,
-        onboarding_step: 'profile_setup',
-      })
+      .update(updates)
       .eq('id', uid);
     setSaving(false);
     if (dbErr) {
@@ -197,6 +207,26 @@ function StepProfileSetup({ uid, onNext }: { uid: string; onNext: () => void }) 
           placeholder="City, State"
         />
       </Field>
+      {phone.trim() && (
+        <label className="flex cursor-pointer items-start gap-2 rounded-md border border-ink-line bg-ink p-3">
+          <input
+            type="checkbox"
+            checked={smsOptIn}
+            onChange={(e) => setSmsOptIn(e.target.checked)}
+            className="mt-0.5 accent-brass"
+          />
+          <span className="text-xs text-slate-300">
+            I agree to receive recurring SMS messages from Statesmen Accelerator at the number
+            above, including session reminders, interview confirmations, assessment deadlines, and
+            program updates. Message frequency varies. Message and data rates may apply. Reply
+            STOP to opt out, HELP for help. See our{' '}
+            <a href="/sms-opt-in" target="_blank" className="text-brass underline">
+              SMS terms
+            </a>
+            .
+          </span>
+        </label>
+      )}
       {error && <div className="text-sm text-red-400">{error}</div>}
       <button className="btn-primary w-full" onClick={handleSave} disabled={saving}>
         {saving ? 'Saving…' : 'Save & Continue'}

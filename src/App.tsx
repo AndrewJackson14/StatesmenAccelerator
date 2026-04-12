@@ -6,6 +6,7 @@ import OnboardingFlow from '@/components/OnboardingFlow';
 import SignInPage from '@/pages/SignInPage';
 import SignUpPage from '@/pages/SignUpPage';
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import SmsOptInPage from '@/pages/SmsOptInPage';
 import ProfilePage from '@/pages/ProfilePage';
 import AssessmentsPage from '@/pages/AssessmentsPage';
 import MessagesPage from '@/pages/MessagesPage';
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/sms-opt-in" element={<SmsOptInPage />} />
         <Route path="/" element={<ProtectedRoute><OnboardingGate><AppShell /></OnboardingGate></ProtectedRoute>}>
           <Route index element={<RoleHome />} />
           <Route path="profile" element={<ProfilePage />} />
