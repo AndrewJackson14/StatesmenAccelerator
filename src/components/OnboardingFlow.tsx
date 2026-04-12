@@ -25,7 +25,7 @@ export default function OnboardingFlow() {
   return (
     <div className="mx-auto max-w-xl space-y-8 py-10">
       <div className="text-center">
-        <h1 className="font-serif text-3xl text-brass">Welcome to Accelerator Academy</h1>
+        <h1 className="font-serif text-3xl text-brass">Welcome to Statesmen Accelerator</h1>
         <p className="mt-2 text-sm text-slate-400">Complete each step to unlock your dashboard.</p>
       </div>
 
@@ -230,7 +230,7 @@ function StepExpectations({ uid, onNext }: { uid: string; onNext: () => void }) 
     <div className="space-y-4">
       <div className="text-lg font-serif text-slate-100">Program Expectations</div>
       <div className="max-h-48 overflow-y-auto rounded-md border border-ink-line bg-ink p-4 text-sm text-slate-300 leading-relaxed">
-        <p className="mb-3">As a Gentleman in the Accelerator Academy, you commit to:</p>
+        <p className="mb-3">As a Gentleman in Statesmen Accelerator, you commit to:</p>
         <p className="mb-2"><strong className="text-slate-100">Attendance:</strong> Maintain at least 75% live session attendance. Communicate absences in advance.</p>
         <p className="mb-2"><strong className="text-slate-100">Engagement:</strong> Complete weekly pulse checks, participate actively in sessions, and engage with your squad.</p>
         <p className="mb-2"><strong className="text-slate-100">Integrity:</strong> Be honest in all assessments and interactions. The program rewards genuine engagement, not performance.</p>

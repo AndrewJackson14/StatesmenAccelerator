@@ -54,7 +54,7 @@ serve(async (req) => {
           user_id: userId,
           type: 'payment',
           title: 'Payment Confirmed',
-          body: 'Your enrollment payment has been received. Welcome to Accelerator Academy.',
+          body: 'Your enrollment payment has been received. Welcome to Statesmen Accelerator.',
           channels: ['in_app'],
         });
       }

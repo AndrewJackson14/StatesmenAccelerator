@@ -40,7 +40,7 @@ serve(async (req) => {
       line_items: [{
         price_data: {
           currency: 'usd',
-          product_data: { name: 'Accelerator Academy — Session 1', description: '13-week transformation program' },
+          product_data: { name: 'Statesmen Accelerator — Session 1', description: '13-week transformation program' },
           unit_amount: amount_cents,
         },
         quantity: 1,

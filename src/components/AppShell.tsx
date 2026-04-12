@@ -37,7 +37,7 @@ export default function AppShell() {
       <header className="border-b border-ink-line bg-ink-soft">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3">
-            <span className="font-serif text-2xl text-brass">Accelerator Academy</span>
+            <span className="font-serif text-2xl text-brass">Statesmen Accelerator</span>
           </Link>
           <nav className="flex items-center gap-4 overflow-x-auto">
             {visible.map((item) => (

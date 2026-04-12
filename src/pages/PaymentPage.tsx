@@ -122,7 +122,7 @@ export default function PaymentPage() {
       ) : (
         <div className="card space-y-6">
           <div>
-            <div className="text-lg font-serif text-slate-100">Accelerator Academy — Session 1</div>
+            <div className="text-lg font-serif text-slate-100">Statesmen Accelerator — Session 1</div>
             <div className="mt-1 text-sm text-slate-400">13-week transformation program</div>
           </div>
 

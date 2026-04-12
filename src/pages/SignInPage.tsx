@@ -69,7 +69,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="font-serif text-3xl text-brass">Accelerator Academy</div>
+          <div className="font-serif text-3xl text-brass">Statesmen Accelerator</div>
           <div className="mt-1 text-xs uppercase tracking-widest text-slate-500">
             Confidence • Character • Ambition
           </div>
