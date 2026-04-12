@@ -27,8 +27,8 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: 209.151.147.175
-          username: halo001
+          username: statesmen
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "dist/*"
-          target: "/home/halo001/webapps/accelerator/"
+          target: "/home/statesmen/webapps/statesmenaccelerator/"
           strip_components: 1
