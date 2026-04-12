@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/auth/AuthProvider';
 import type { CohortRow, ProfileRow } from '@/types/database';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function EnrollGentlemanModal({ open, onClose, onEnrolled }: Props) {
+  const { user } = useAuth();
   const [cohorts, setCohorts] = useState<CohortRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [selectedCohort, setSelectedCohort] = useState('');
@@ -77,6 +79,7 @@ export default function EnrollGentlemanModal({ open, onClose, onEnrolled }: Prop
     }
 
     await supabase.from('audit_log').insert({
+      user_id: user?.id,
       action: 'gentlemen_enrolled',
       entity_type: 'cohort',
       entity_id: selectedCohort,

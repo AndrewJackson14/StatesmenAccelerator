@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/auth/AuthProvider';
 import type { CohortRow, ProfileRow, CohortPhase } from '@/types/database';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function CreateSquadModal({ open, onClose, onCreated }: Props) {
+  const { user } = useAuth();
   const [cohorts, setCohorts] = useState<CohortRow[]>([]);
   const [selectedCohort, setSelectedCohort] = useState('');
   const [cohortMembers, setCohortMembers] = useState<ProfileRow[]>([]);
@@ -125,6 +127,7 @@ export default function CreateSquadModal({ open, onClose, onCreated }: Props) {
     }
 
     await supabase.from('audit_log').insert({
+      user_id: user?.id,
       action: 'squad_created',
       entity_type: 'squad',
       entity_id: squad.id,

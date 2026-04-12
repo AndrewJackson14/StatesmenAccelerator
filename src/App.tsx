@@ -13,6 +13,9 @@ import SessionsPage from '@/pages/SessionsPage';
 import PaymentPage from '@/pages/PaymentPage';
 import LeaderboardPage from '@/pages/LeaderboardPage';
 import DataExportPage from '@/pages/DataExportPage';
+import ApplicationQueuePage from '@/pages/headmaster/ApplicationQueuePage';
+import InterviewAvailabilityPage from '@/pages/headmaster/InterviewAvailabilityPage';
+import BookShipmentQueuePage from '@/pages/headmaster/BookShipmentQueuePage';
 import GentlemanDashboard from '@/pages/dashboards/GentlemanDashboard';
 import CaptainDashboard from '@/pages/dashboards/CaptainDashboard';
 import HeadmasterDashboard from '@/pages/dashboards/HeadmasterDashboard';
@@ -62,6 +65,9 @@ export default function App() {
           <Route path="payment" element={<PaymentPage />} />
           <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="export" element={<DataExportPage />} />
+          <Route path="headmaster/applications" element={<ApplicationQueuePage />} />
+          <Route path="headmaster/interviews" element={<InterviewAvailabilityPage />} />
+          <Route path="headmaster/shipments" element={<BookShipmentQueuePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

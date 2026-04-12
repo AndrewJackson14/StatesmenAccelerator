@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/auth/AuthProvider';
 
 interface Props {
   open: boolean;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function CreateCohortModal({ open, onClose, onCreated }: Props) {
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -23,25 +25,27 @@ export default function CreateCohortModal({ open, onClose, onCreated }: Props) {
     setSaving(true);
     setError(null);
 
-    const { error: dbError } = await supabase.from('cohorts').insert({
+    const { data: cohort, error: dbError } = await supabase.from('cohorts').insert({
       name: name.trim(),
       start_date: startDate || null,
       end_date: endDate || null,
       max_capacity: maxCapacity,
       status: 'upcoming',
-    });
+    }).select().single();
 
     setSaving(false);
 
-    if (dbError) {
-      setError(dbError.message);
+    if (dbError || !cohort) {
+      setError(dbError?.message ?? 'Failed to create cohort.');
       return;
     }
 
     // Log audit
     await supabase.from('audit_log').insert({
+      user_id: user?.id,
       action: 'cohort_created',
       entity_type: 'cohort',
+      entity_id: cohort.id,
       details: { name: name.trim() },
     });
 
