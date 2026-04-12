@@ -22,17 +22,26 @@ const MILESTONE_STEPS: PipelineStep[] = [
 ];
 
 export default function OnboardingFlow() {
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, signOut } = useAuth();
   const uid = user?.id;
   const [state, setState] = useState<ApplicationState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!uid) return;
     setLoading(true);
-    const next = await loadApplicationState(uid);
-    setState(next);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const next = await loadApplicationState(uid);
+      setState(next);
+      if (!next) setLoadError('No application found for this account.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLoadError(message);
+    } finally {
+      setLoading(false);
+    }
     await refreshProfile();
   }, [uid, refreshProfile]);
 
@@ -40,10 +49,33 @@ export default function OnboardingFlow() {
     load();
   }, [load]);
 
-  if (loading || !state || !uid) {
+  if (loading || !uid) {
     return (
-      <div className="flex h-full items-center justify-center py-20 text-sm text-slate-500">
-        Loading your application…
+      <div className="flex h-full flex-col items-center justify-center gap-4 py-20 text-sm text-slate-500">
+        <div>Loading your application…</div>
+        <button className="btn text-xs" onClick={() => signOut()}>
+          Having trouble? Sign out
+        </button>
+      </div>
+    );
+  }
+
+  if (!state) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 py-20 text-center">
+        <div className="text-lg font-serif text-slate-100">Something's off</div>
+        <p className="text-sm text-slate-400">
+          {loadError ??
+            'We couldn\'t load your application. This usually means your session has expired.'}
+        </p>
+        <div className="flex justify-center gap-2">
+          <button className="btn text-xs" onClick={load}>
+            Retry
+          </button>
+          <button className="btn-primary text-xs" onClick={() => signOut()}>
+            Sign out
+          </button>
+        </div>
       </div>
     );
   }

@@ -37,12 +37,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session?.user) await loadProfile(data.session.user.id);
-      setLoading(false);
-    });
+    (async () => {
+      try {
+        // Read whatever is in localStorage, then force a refresh so the
+        // access token is guaranteed fresh before any queries fire.
+        const { data: existing } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        if (existing.session) {
+          const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+          if (!mounted) return;
+          if (refreshErr) {
+            // Refresh failed — token is unusable. Clear the session entirely
+            // so the user gets bounced to sign-in instead of hanging.
+            await supabase.auth.signOut();
+            setSession(null);
+            setProfile(null);
+            setLoading(false);
+            return;
+          }
+          setSession(refreshed.session ?? existing.session);
+          const uid = (refreshed.session ?? existing.session)?.user?.id;
+          if (uid) await loadProfile(uid);
+        } else {
+          setSession(null);
+        }
+      } catch (err) {
+        console.error('[auth] bootstrap error', err);
+        if (mounted) setSession(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession);
