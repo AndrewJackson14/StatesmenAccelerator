@@ -138,15 +138,25 @@ function StepProfileSetup({ uid, onNext }: { uid: string; onNext: () => void }) 
       setError('Please check the SMS consent box or leave phone blank.');
       return;
     }
+    // Normalize phone to E.164. Assume US if 10 digits or 11 digits starting with 1.
+    const digits = phone.replace(/\D/g, '');
+    let normalizedPhone: string | null = null;
+    if (digits.length === 10) normalizedPhone = `+1${digits}`;
+    else if (digits.length === 11 && digits.startsWith('1')) normalizedPhone = `+${digits}`;
+    else if (digits.length >= 10) normalizedPhone = `+${digits}`;
+    if (phone.trim() && !normalizedPhone) {
+      setError('Phone must be a valid US number (10 digits) or international format.');
+      return;
+    }
     setSaving(true);
     const updates: Record<string, unknown> = {
       name: name.trim(),
       age: age ? parseInt(age) : null,
       location: location.trim() || null,
-      phone: phone.trim() || null,
+      phone: normalizedPhone,
       onboarding_step: 'profile_setup',
     };
-    if (phone.trim() && smsOptIn) {
+    if (normalizedPhone && smsOptIn) {
       updates.sms_opt_in = true;
       updates.sms_opt_in_at = new Date().toISOString();
     }
@@ -253,62 +263,35 @@ function StepIntakeAssessments({ uid, onNext }: { uid: string; onNext: () => voi
 
   async function loadIntake() {
     setLoading(true);
+
     const { data: tmpl } = await supabase
       .from('assessment_templates')
       .select('*')
       .in('type', INTAKE_TYPES);
     setTemplates(tmpl ?? []);
 
-    // Find the user's current cohort, auto-enroll in Intake Pool if not already
-    let { data: membership } = await supabase
+    // Cohort membership is guaranteed by handle_new_user trigger:
+    // every new signup is auto-enrolled in Intake Pool.
+    const { data: membership } = await supabase
       .from('cohort_members')
       .select('cohort_id')
       .eq('user_id', uid)
       .limit(1)
       .maybeSingle();
 
-    if (!membership) {
-      const { data: pool } = await supabase
-        .from('cohorts')
-        .select('id')
-        .eq('name', 'Intake Pool')
-        .maybeSingle();
-      if (pool) {
-        await supabase
-          .from('cohort_members')
-          .upsert(
-            { cohort_id: pool.id, user_id: uid, role: 'gentleman' },
-            { onConflict: 'cohort_id,user_id' },
-          );
-        membership = { cohort_id: pool.id };
-      }
-    }
-
     if (!membership || !tmpl) {
       setLoading(false);
       return;
     }
 
-    // Get or create instances for this cohort
+    // Assessment instances are pre-seeded for Intake Pool; just read them.
     const { data: existing } = await supabase
       .from('assessment_instances')
       .select('*')
       .eq('cohort_id', membership.cohort_id)
       .in('template_id', tmpl.map((t) => t.id));
 
-    const instanceList = existing ?? [];
-
-    for (const t of tmpl) {
-      if (!instanceList.find((i) => i.template_id === t.id)) {
-        const { data: newInst } = await supabase
-          .from('assessment_instances')
-          .insert({ template_id: t.id, cohort_id: membership.cohort_id, status: 'open' })
-          .select()
-          .single();
-        if (newInst) instanceList.push(newInst);
-      }
-    }
-    setInstances(instanceList);
+    setInstances(existing ?? []);
 
     const { data: responses } = await supabase
       .from('assessment_responses')
