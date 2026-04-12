@@ -10,19 +10,40 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error } = await signUp(email, password);
+    const { error, hasSession } = await signUp(email, password);
     setBusy(false);
     if (error) {
       setError(error);
       return;
     }
-    navigate('/');
+    if (hasSession) {
+      navigate('/');
+    } else {
+      setPendingConfirmation(true);
+    }
   };
+
+  if (pendingConfirmation) {
+    return (
+      <AuthLayout title="Check your email">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">
+            We sent a confirmation link to <strong className="text-slate-100">{email}</strong>.
+            Click the link in the email to activate your account, then return here to sign in.
+          </p>
+          <Link to="/sign-in" className="btn-primary block text-center">
+            Go to sign in
+          </Link>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout title="Create account">
