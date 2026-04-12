@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/auth/AuthProvider';
+import { sendSmsToUser, SMS } from '@/lib/sms';
 import type { ApplicationStatus } from '@/lib/pipeline';
 import { STEP_LABEL, currentStep } from '@/lib/pipeline';
 
@@ -80,7 +81,7 @@ export default function ApplicationQueuePage() {
         interview_invited_at: new Date().toISOString(),
       })
       .eq('id', app.id);
-    // TODO: send email + SMS notification
+    await sendSmsToUser(app.user_id, SMS.interviewInvite());
     setActing(null);
     loadAll();
   }
@@ -130,7 +131,21 @@ export default function ApplicationQueuePage() {
       details: { target_cohort_id: targetCohortId ?? null, applicant: app.profiles?.name },
     });
 
-    // TODO: trigger decision email + SMS via Twilio edge function
+    // Decision SMS
+    const smsBody =
+      decision === 'approved_confirmed'
+        ? SMS.approvedConfirmed()
+        : decision === 'approved_waitlisted'
+        ? SMS.approvedWaitlisted()
+        : decision === 'declined'
+        ? SMS.declined()
+        : SMS.onHold();
+    await sendSmsToUser(app.user_id, smsBody);
+    await supabase
+      .from('applications')
+      .update({ decision_sms_sent_at: new Date().toISOString() })
+      .eq('id', app.id);
+
     setActing(null);
     loadAll();
   }

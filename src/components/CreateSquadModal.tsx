@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/auth/AuthProvider';
+import { sendSmsToUser, SMS } from '@/lib/sms';
 import type { CohortRow, ProfileRow, CohortPhase } from '@/types/database';
 
 interface Props {
@@ -133,6 +134,13 @@ export default function CreateSquadModal({ open, onClose, onCreated }: Props) {
       entity_id: squad.id,
       details: { name: squadName.trim(), members: Array.from(selectedMembers), leader: leaderId, deputy: deputyId },
     });
+
+    // Notify each assigned member by SMS
+    await Promise.all(
+      Array.from(selectedMembers).map((memberId) =>
+        sendSmsToUser(memberId, SMS.squadAssigned(squadName.trim())),
+      ),
+    );
 
     setSaving(false);
     onCreated();

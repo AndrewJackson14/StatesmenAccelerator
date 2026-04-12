@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import AssessmentRenderer from '@/components/AssessmentRenderer';
 import { loadApplicationState, setApplicationStatus } from '@/lib/application';
 import { currentStep, STEP_LABEL, PRICE_LABEL, type PipelineStep, type ApplicationState } from '@/lib/pipeline';
+import { sendSmsToUser, SMS } from '@/lib/sms';
 import type { AssessmentTemplateRow, AssessmentInstanceRow } from '@/types/database';
 
 // Visual progress bar — subset of steps we show as milestones.
@@ -580,6 +581,19 @@ function StepScheduleInterview({ uid, onNext }: { uid: string; onNext: () => voi
     await setApplicationStatus(uid, 'interview_scheduled', {
       interview_scheduled_at: new Date().toISOString(),
     });
+
+    // Send confirmation SMS with the chosen time
+    const chosenSlot = slots.find((s) => s.id === slotId);
+    if (chosenSlot) {
+      const whenLabel = new Date(chosenSlot.start_at).toLocaleString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+      await sendSmsToUser(uid, SMS.interviewConfirmed(whenLabel));
+    }
 
     setBooking(null);
     onNext();
