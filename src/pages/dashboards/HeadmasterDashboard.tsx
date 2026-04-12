@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import CreateCohortModal from '@/components/CreateCohortModal';
 import EnrollGentlemanModal from '@/components/EnrollGentlemanModal';
@@ -96,7 +97,7 @@ export default function HeadmasterDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active Gentlemen" value={gentlemenCount} empty={gentlemenCount === 0} />
+        <StatCard label="Active Gentlemen" value={gentlemenCount} empty={gentlemenCount === 0} to="/headmaster/applications?tab=all" />
         <StatCard label="Open Flags" value={flags.length} alert={flags.some((f) => f.severity === 'red')} empty={flags.length === 0} />
         <StatCard label="Attendance" value={attendanceRate !== null ? `${attendanceRate}%` : '—'} empty={attendanceRate === null} />
         <StatCard label="Challenge Completion" value={challengeRate !== null ? `${challengeRate}%` : '—'} empty={challengeRate === null} />
@@ -107,10 +108,14 @@ export default function HeadmasterDashboard() {
           <Section title="Cohorts">
             {cohorts.length === 0 ? <EmptyState message='No cohorts yet. Hit "+ Cohort" to start.' /> : (
               <div className="space-y-2">{cohorts.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-md border border-ink-line bg-ink px-4 py-3">
+                <Link
+                  key={c.id}
+                  to={c.name === 'Intake Pool' ? '/headmaster/applications' : `/headmaster/applications?cohort=${c.id}`}
+                  className="flex items-center justify-between rounded-md border border-ink-line bg-ink px-4 py-3 transition hover:border-brass/50 hover:bg-ink-soft"
+                >
                   <div><div className="text-sm font-medium text-slate-100">{c.name}</div><div className="mt-0.5 text-xs text-slate-500">{c.member_count} members · {c.current_phase ?? 'Not started'}</div></div>
                   <div className="flex items-center gap-3">{c.flag_count > 0 && <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-400">{c.flag_count} flag{c.flag_count !== 1 ? 's' : ''}</span>}<StatusBadge status={c.status} /></div>
-                </div>
+                </Link>
               ))}</div>
             )}
           </Section>
@@ -168,8 +173,17 @@ export default function HeadmasterDashboard() {
   );
 }
 
-function StatCard({ label, value, alert, empty }: { label: string; value: string | number; alert?: boolean; empty?: boolean }) {
-  return <div className="card"><div className="text-xs uppercase tracking-wider text-slate-500">{label}</div><div className={`mt-1 text-2xl font-serif ${alert ? 'text-red-400' : empty ? 'text-slate-600' : 'text-brass'}`}>{value}</div></div>;
+function StatCard({ label, value, alert, empty, to }: { label: string; value: string | number; alert?: boolean; empty?: boolean; to?: string }) {
+  const content = (
+    <>
+      <div className="text-xs uppercase tracking-wider text-slate-500">{label}</div>
+      <div className={`mt-1 text-2xl font-serif ${alert ? 'text-red-400' : empty ? 'text-slate-600' : 'text-brass'}`}>{value}</div>
+    </>
+  );
+  if (to) {
+    return <Link to={to} className="card block transition hover:border-brass/50 hover:bg-ink-soft">{content}</Link>;
+  }
+  return <div className="card">{content}</div>;
 }
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div className="card"><div className="mb-4 text-xs font-medium uppercase tracking-wider text-slate-500">{title}</div>{children}</div>;

@@ -15,6 +15,7 @@ import PaymentPage from '@/pages/PaymentPage';
 import LeaderboardPage from '@/pages/LeaderboardPage';
 import DataExportPage from '@/pages/DataExportPage';
 import ApplicationQueuePage from '@/pages/headmaster/ApplicationQueuePage';
+import ApplicationDetailPage from '@/pages/headmaster/ApplicationDetailPage';
 import InterviewAvailabilityPage from '@/pages/headmaster/InterviewAvailabilityPage';
 import GentlemanDashboard from '@/pages/dashboards/GentlemanDashboard';
 import CaptainDashboard from '@/pages/dashboards/CaptainDashboard';
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="export" element={<DataExportPage />} />
           <Route path="headmaster/applications" element={<ApplicationQueuePage />} />
+          <Route path="headmaster/applications/:id" element={<ApplicationDetailPage />} />
           <Route path="headmaster/interviews" element={<InterviewAvailabilityPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

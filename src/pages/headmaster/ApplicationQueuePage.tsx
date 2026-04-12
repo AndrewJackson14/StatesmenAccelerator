@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/auth/AuthProvider';
-import { sendSmsToUser, SMS } from '@/lib/sms';
 import type { ApplicationStatus } from '@/lib/pipeline';
 import { STEP_LABEL, currentStep } from '@/lib/pipeline';
 
@@ -26,12 +25,6 @@ interface ApplicationWithProfile {
   } | null;
 }
 
-interface CohortOption {
-  id: string;
-  name: string;
-  status: string;
-}
-
 type TabKey = 'review' | 'scheduled' | 'held' | 'all';
 
 const TAB_FILTERS: Record<TabKey, ApplicationStatus[]> = {
@@ -42,12 +35,9 @@ const TAB_FILTERS: Record<TabKey, ApplicationStatus[]> = {
 };
 
 export default function ApplicationQueuePage() {
-  const { user } = useAuth();
   const [apps, setApps] = useState<ApplicationWithProfile[]>([]);
-  const [cohorts, setCohorts] = useState<CohortOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('review');
-  const [acting, setActing] = useState<string | null>(null);
 
   useEffect(() => {
     loadAll();
@@ -55,99 +45,12 @@ export default function ApplicationQueuePage() {
 
   async function loadAll() {
     setLoading(true);
-    const [{ data: appData }, { data: cohortData }] = await Promise.all([
-      supabase
-        .from('applications')
-        .select('*, profiles!applications_user_id_fkey(name, email, photo_url, phone)')
-        .order('submitted_at', { ascending: false }),
-      supabase
-        .from('cohorts')
-        .select('id, name, status')
-        .neq('name', 'Intake Pool')
-        .in('status', ['upcoming', 'active'])
-        .order('name'),
-    ]);
+    const { data: appData } = await supabase
+      .from('applications')
+      .select('*, profiles!applications_user_id_fkey(name, email, photo_url, phone)')
+      .order('submitted_at', { ascending: false });
     setApps((appData as ApplicationWithProfile[]) ?? []);
-    setCohorts(cohortData ?? []);
     setLoading(false);
-  }
-
-  async function inviteToInterview(app: ApplicationWithProfile) {
-    setActing(app.id);
-    await supabase
-      .from('applications')
-      .update({
-        status: 'interview_invited',
-        interview_invited_at: new Date().toISOString(),
-      })
-      .eq('id', app.id);
-    await sendSmsToUser(app.user_id, SMS.interviewInvite());
-    setActing(null);
-    loadAll();
-  }
-
-  async function markInterviewHeld(app: ApplicationWithProfile) {
-    setActing(app.id);
-    await supabase
-      .from('applications')
-      .update({
-        status: 'interview_held',
-        interview_held_at: new Date().toISOString(),
-      })
-      .eq('id', app.id);
-    setActing(null);
-    loadAll();
-  }
-
-  async function decide(
-    app: ApplicationWithProfile,
-    decision: 'approved_waitlisted' | 'approved_confirmed' | 'declined' | 'on_hold',
-    targetCohortId?: string,
-  ) {
-    setActing(app.id);
-
-    const updates: Record<string, unknown> = {
-      status: decision,
-      decided_by: user?.id,
-      decided_at: new Date().toISOString(),
-    };
-    if (targetCohortId) updates.target_cohort_id = targetCohortId;
-    await supabase.from('applications').update(updates).eq('id', app.id);
-
-    // If approved to a cohort, also enroll in cohort_members
-    if (decision === 'approved_confirmed' && targetCohortId) {
-      await supabase.from('cohort_members').upsert(
-        { cohort_id: targetCohortId, user_id: app.user_id, role: 'gentleman' },
-        { onConflict: 'cohort_id,user_id' },
-      );
-    }
-
-    // Audit log
-    await supabase.from('audit_log').insert({
-      user_id: user?.id,
-      action: `application_${decision}`,
-      entity_type: 'application',
-      entity_id: app.id,
-      details: { target_cohort_id: targetCohortId ?? null, applicant: app.profiles?.name },
-    });
-
-    // Decision SMS
-    const smsBody =
-      decision === 'approved_confirmed'
-        ? SMS.approvedConfirmed()
-        : decision === 'approved_waitlisted'
-        ? SMS.approvedWaitlisted()
-        : decision === 'declined'
-        ? SMS.declined()
-        : SMS.onHold();
-    await sendSmsToUser(app.user_id, smsBody);
-    await supabase
-      .from('applications')
-      .update({ decision_sms_sent_at: new Date().toISOString() })
-      .eq('id', app.id);
-
-    setActing(null);
-    loadAll();
   }
 
   const filtered = apps.filter(
@@ -194,15 +97,7 @@ export default function ApplicationQueuePage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((app) => (
-            <ApplicationCard
-              key={app.id}
-              app={app}
-              cohorts={cohorts}
-              acting={acting === app.id}
-              onInvite={() => inviteToInterview(app)}
-              onMarkHeld={() => markInterviewHeld(app)}
-              onDecide={(decision, cohortId) => decide(app, decision, cohortId)}
-            />
+            <ApplicationCard key={app.id} app={app} />
           ))}
         </div>
       )}
@@ -217,26 +112,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   all: 'All',
 };
 
-function ApplicationCard({
-  app,
-  cohorts,
-  acting,
-  onInvite,
-  onMarkHeld,
-  onDecide,
-}: {
-  app: ApplicationWithProfile;
-  cohorts: CohortOption[];
-  acting: boolean;
-  onInvite: () => void;
-  onMarkHeld: () => void;
-  onDecide: (
-    decision: 'approved_waitlisted' | 'approved_confirmed' | 'declined' | 'on_hold',
-    cohortId?: string,
-  ) => void;
-}) {
-  const [chosenCohort, setChosenCohort] = useState<string>('');
-
+function ApplicationCard({ app }: { app: ApplicationWithProfile }) {
   const step = currentStep({
     status: app.status,
     profileComplete: true,
@@ -250,7 +126,10 @@ function ApplicationCard({
   });
 
   return (
-    <div className="card space-y-3">
+    <Link
+      to={`/headmaster/applications/${app.id}`}
+      className="card block space-y-3 transition hover:border-brass/50 hover:bg-ink-soft"
+    >
       <div className="flex items-start justify-between">
         <div>
           <div className="text-lg font-medium text-slate-100">
@@ -265,76 +144,15 @@ function ApplicationCard({
 
       <div className="flex gap-4 text-xs text-slate-500">
         <span>Applied {timeAgo(app.submitted_at)}</span>
-        {app.pdp_purchased_at && <span>· PDP paid</span>}
         {app.assessments_completed_at && <span>· Intake done</span>}
         {app.interview_scheduled_at && <span>· Interview set</span>}
       </div>
 
-      <div className="text-xs text-brass">Current step: {STEP_LABEL[step]}</div>
-
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2 border-t border-ink-line pt-3">
-        {app.status === 'assessments_done' && (
-          <button className="btn-primary text-xs" onClick={onInvite} disabled={acting}>
-            Invite to Interview
-          </button>
-        )}
-        {app.status === 'interview_scheduled' && (
-          <button className="btn text-xs" onClick={onMarkHeld} disabled={acting}>
-            Mark Interview Held
-          </button>
-        )}
-        {app.status === 'interview_held' && (
-          <>
-            <select
-              className="input max-w-[200px] text-xs"
-              value={chosenCohort}
-              onChange={(e) => setChosenCohort(e.target.value)}
-            >
-              <option value="">— Cohort (for confirmed) —</option>
-              {cohorts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <button
-              className="btn-primary text-xs"
-              onClick={() => onDecide('approved_confirmed', chosenCohort)}
-              disabled={acting || !chosenCohort}
-            >
-              Approve → Cohort
-            </button>
-            <button
-              className="btn text-xs"
-              onClick={() => onDecide('approved_waitlisted')}
-              disabled={acting}
-            >
-              Approve → Waitlist
-            </button>
-            <button
-              className="btn text-xs"
-              onClick={() => onDecide('on_hold')}
-              disabled={acting}
-            >
-              Hold
-            </button>
-            <button
-              className="btn text-xs text-red-400"
-              onClick={() => {
-                if (confirm('Decline this application?')) onDecide('declined');
-              }}
-              disabled={acting}
-            >
-              Decline
-            </button>
-          </>
-        )}
-        {app.status === 'on_hold' && (
-          <span className="text-xs text-slate-500">On hold — revisit when ready.</span>
-        )}
+      <div className="flex items-center justify-between border-t border-ink-line pt-3">
+        <div className="text-xs text-brass">Current step: {STEP_LABEL[step]}</div>
+        <div className="text-xs text-slate-500">Review →</div>
       </div>
-    </div>
+    </Link>
   );
 }
 
