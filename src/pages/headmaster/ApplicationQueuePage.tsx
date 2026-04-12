@@ -240,7 +240,6 @@ function ApplicationCard({
   const step = currentStep({
     status: app.status,
     profileComplete: true,
-    pdpPaid: !!app.pdp_purchased_at,
     intakeDone: !!app.assessments_completed_at,
     interviewBooked: !!app.interview_scheduled_at,
     feePaid: false,

@@ -2,11 +2,16 @@
 // Pipeline state machine helper
 // Single source of truth for which onboarding step a user sees
 // based on their applications.status.
+//
+// The PDP ($49 book + pre-assessments) is a separate product
+// tracked in a different system. This flow picks up AFTER a
+// candidate has completed the PDP and been invited to apply
+// for the Accelerator.
 // ============================================================
 
 export type ApplicationStatus =
   | 'prospect'
-  | 'pdp_purchased'
+  | 'pdp_purchased' // legacy, unused in current flow
   | 'assessments_done'
   | 'interview_invited'
   | 'interview_scheduled'
@@ -18,7 +23,6 @@ export type ApplicationStatus =
 
 export type PipelineStep =
   | 'profile_setup'
-  | 'pdp_payment'
   | 'intake_assessments'
   | 'awaiting_review'
   | 'schedule_interview'
@@ -36,7 +40,6 @@ export type PipelineStep =
 export interface ApplicationState {
   status: ApplicationStatus;
   profileComplete: boolean;
-  pdpPaid: boolean;
   intakeDone: boolean;
   interviewBooked: boolean;
   feePaid: boolean;
@@ -54,15 +57,8 @@ export function currentStep(state: ApplicationState): PipelineStep {
   if (state.status === 'declined') return 'declined';
   if (state.status === 'on_hold') return 'on_hold';
 
-  if (state.status === 'prospect') {
+  if (state.status === 'prospect' || state.status === 'pdp_purchased') {
     if (!state.profileComplete) return 'profile_setup';
-    if (!state.pdpPaid) return 'pdp_payment';
-    // If profile + PDP done, user should be moving to assessments,
-    // which flips status to pdp_purchased on payment confirmation.
-    return 'pdp_payment';
-  }
-
-  if (state.status === 'pdp_purchased') {
     if (!state.intakeDone) return 'intake_assessments';
     return 'awaiting_review';
   }
@@ -107,7 +103,6 @@ export function currentStep(state: ApplicationState): PipelineStep {
  */
 export const STEP_LABEL: Record<PipelineStep, string> = {
   profile_setup: 'Profile Setup',
-  pdp_payment: 'Personal Development Package',
   intake_assessments: 'Intake Assessments',
   awaiting_review: 'Application Review',
   schedule_interview: 'Schedule Interview',
@@ -123,26 +118,21 @@ export const STEP_LABEL: Record<PipelineStep, string> = {
   declined: 'Application Closed',
 };
 
-/**
- * A user is "active" in the program when their application is approved_confirmed,
- * fee is paid, and they've completed all onboarding sub-steps + been squadded.
- */
 export function isFullyActive(state: ApplicationState): boolean {
   return currentStep(state) === 'active';
 }
 
 /**
  * Pricing — kept in one place so the Stripe edge function and the UI agree.
+ * PDP is not here; it lives in the separate PDP product/system.
  */
 export const PRICING = {
-  pdp_cents: 4900,
   deposit_cents: 22500,
   final_cents: 22500,
   full_cents: 45000,
 } as const;
 
 export const PRICE_LABEL = {
-  pdp: '$49',
   deposit: '$225',
   final: '$225',
   full: '$450',

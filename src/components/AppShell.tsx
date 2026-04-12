@@ -17,7 +17,6 @@ const NAV: NavItem[] = [
   { to: '/messages', label: 'Messages', roles: ['gentleman', 'captain', 'headmaster', 'officer'] },
   { to: '/headmaster/applications', label: 'Applications', roles: ['headmaster'] },
   { to: '/headmaster/interviews', label: 'Interviews', roles: ['headmaster'] },
-  { to: '/headmaster/shipments', label: 'Shipments', roles: ['headmaster'] },
   { to: '/payment', label: 'Payment', roles: ['gentleman'] },
   { to: '/export', label: 'Export', roles: ['headmaster'] },
   { to: '/profile', label: 'Profile', roles: ['gentleman', 'captain', 'headmaster', 'officer', 'alumni'] },

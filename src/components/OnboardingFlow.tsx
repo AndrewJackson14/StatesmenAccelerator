@@ -10,7 +10,6 @@ import type { AssessmentTemplateRow, AssessmentInstanceRow } from '@/types/datab
 // Visual progress bar — subset of steps we show as milestones.
 const MILESTONE_STEPS: PipelineStep[] = [
   'profile_setup',
-  'pdp_payment',
   'intake_assessments',
   'awaiting_review',
   'schedule_interview',
@@ -86,8 +85,6 @@ function StepDispatch({ step, uid, onChanged }: { step: PipelineStep; uid: strin
   switch (step) {
     case 'profile_setup':
       return <StepProfileSetup uid={uid} onNext={onChanged} />;
-    case 'pdp_payment':
-      return <StepPdpPayment uid={uid} onNext={onChanged} />;
     case 'intake_assessments':
       return <StepIntakeAssessments uid={uid} onNext={onChanged} />;
     case 'awaiting_review':
@@ -237,101 +234,6 @@ function StepProfileSetup({ uid, onNext }: { uid: string; onNext: () => void }) 
 }
 
 // ============================================================
-// STEP: PDP Payment ($49)
-// ============================================================
-
-function StepPdpPayment({ uid, onNext }: { uid: string; onNext: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // TODO: Replace with real Stripe Checkout once VITE_STRIPE_PUBLISHABLE_KEY
-  // and the create-checkout-session edge function are wired.
-  async function handleMockPay() {
-    setBusy(true);
-    setError(null);
-
-    // Create the payment record
-    const { data: payment, error: payErr } = await supabase
-      .from('payments')
-      .insert({
-        user_id: uid,
-        amount_cents: 4900,
-        currency: 'usd',
-        purpose: 'pdp',
-        status: 'paid',
-        paid_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (payErr || !payment) {
-      setBusy(false);
-      setError(payErr?.message ?? 'Payment failed.');
-      return;
-    }
-
-    // Create the book shipment record (Headmaster will process)
-    await supabase.from('book_shipments').insert({
-      user_id: uid,
-      purchased_at: new Date().toISOString(),
-      status: 'pending',
-    });
-
-    // Enroll in Intake Pool so intake assessments have a cohort to attach to
-    const { data: pool } = await supabase
-      .from('cohorts')
-      .select('id')
-      .eq('name', 'Intake Pool')
-      .maybeSingle();
-
-    if (pool) {
-      await supabase
-        .from('cohort_members')
-        .upsert(
-          { cohort_id: pool.id, user_id: uid, role: 'gentleman' },
-          { onConflict: 'cohort_id,user_id' },
-        );
-    }
-
-    // Flip application status
-    await setApplicationStatus(uid, 'pdp_purchased', {
-      pdp_purchased_at: new Date().toISOString(),
-    });
-
-    setBusy(false);
-    onNext();
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="text-lg font-serif text-slate-100">Personal Development Package</div>
-      <div className="rounded-md border border-ink-line bg-ink p-4 text-sm text-slate-300">
-        <div className="mb-3">
-          The Personal Development Package includes:
-        </div>
-        <ul className="ml-4 list-disc space-y-1">
-          <li>A printed copy of the Statesmen foundational book (mailed)</li>
-          <li>The full intake assessment battery (Resolve, Efficacy, Mental Health)</li>
-          <li>Your personal baseline report</li>
-          <li>An invitation to interview for the next Accelerator cohort</li>
-        </ul>
-      </div>
-      <div className="flex items-center justify-between rounded-md border border-brass/40 bg-brass/5 px-4 py-3">
-        <div className="font-serif text-slate-100">One-time fee</div>
-        <div className="font-serif text-2xl text-brass">{PRICE_LABEL.pdp}</div>
-      </div>
-      {error && <div className="text-sm text-red-400">{error}</div>}
-      <button className="btn-primary w-full" onClick={handleMockPay} disabled={busy}>
-        {busy ? 'Processing…' : `Pay ${PRICE_LABEL.pdp} and begin`}
-      </button>
-      <p className="text-center text-xs text-slate-500">
-        Secure payment via Stripe · Non-refundable · Your book ships within 5 business days
-      </p>
-    </div>
-  );
-}
-
-// ============================================================
 // STEP: Intake Assessments
 // ============================================================
 
@@ -357,13 +259,30 @@ function StepIntakeAssessments({ uid, onNext }: { uid: string; onNext: () => voi
       .in('type', INTAKE_TYPES);
     setTemplates(tmpl ?? []);
 
-    // Find the user's current cohort (should be Intake Pool unless Headmaster moved them)
-    const { data: membership } = await supabase
+    // Find the user's current cohort, auto-enroll in Intake Pool if not already
+    let { data: membership } = await supabase
       .from('cohort_members')
       .select('cohort_id')
       .eq('user_id', uid)
       .limit(1)
       .maybeSingle();
+
+    if (!membership) {
+      const { data: pool } = await supabase
+        .from('cohorts')
+        .select('id')
+        .eq('name', 'Intake Pool')
+        .maybeSingle();
+      if (pool) {
+        await supabase
+          .from('cohort_members')
+          .upsert(
+            { cohort_id: pool.id, user_id: uid, role: 'gentleman' },
+            { onConflict: 'cohort_id,user_id' },
+          );
+        membership = { cohort_id: pool.id };
+      }
+    }
 
     if (!membership || !tmpl) {
       setLoading(false);

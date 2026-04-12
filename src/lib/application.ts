@@ -51,17 +51,6 @@ export async function loadApplicationState(
 
   const profileComplete = Boolean(profile?.name);
 
-  // PDP payment: any paid row with purpose='pdp'
-  const { data: pdpPayments } = await supabase
-    .from('payments')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('purpose', 'pdp')
-    .eq('status', 'paid')
-    .limit(1);
-
-  const pdpPaid = (pdpPayments?.length ?? 0) > 0 || !!app.pdp_purchased_at;
-
   // Fee payment: paid deposit OR paid full
   const { data: feePayments } = await supabase
     .from('payments')
@@ -121,7 +110,6 @@ export async function loadApplicationState(
     application: app,
     status: app.status as ApplicationStatus,
     profileComplete,
-    pdpPaid,
     intakeDone,
     interviewBooked,
     feePaid,
@@ -134,7 +122,7 @@ export async function loadApplicationState(
 
 /**
  * Update the application status. Used by various onboarding steps when
- * they finish their work (e.g., after PDP payment clears, flip to pdp_purchased).
+ * they finish their work.
  */
 export async function setApplicationStatus(
   userId: string,
