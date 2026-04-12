@@ -105,7 +105,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    // Best-effort: call supabase.auth.signOut with a timeout so a stuck
+    // navigator lock or network hiccup can't leave the user stranded.
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((resolve) => setTimeout(resolve, 2000)),
+      ]);
+    } catch (err) {
+      console.warn('[auth] signOut threw, continuing with local clear', err);
+    }
+    // Nuke every sb-* key in localStorage so the next load starts fresh
+    // regardless of what supabase-js was in the middle of doing.
+    try {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('sb-'))
+        .forEach((k) => localStorage.removeItem(k));
+    } catch {
+      // localStorage unavailable (private mode, etc.) — nothing to do
+    }
+    setSession(null);
+    setProfile(null);
+    // Hard navigate so React state is nuked along with any stale
+    // supabase-js client state from the previous page.
+    window.location.href = '/sign-in';
   }, []);
 
   const refreshProfile = useCallback(async () => {
