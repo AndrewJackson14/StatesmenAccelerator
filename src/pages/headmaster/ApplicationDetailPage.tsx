@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/auth/AuthProvider';
 import { sendSmsToUser, SMS } from '@/lib/sms';
+import { sendEmailToUser, EMAIL } from '@/lib/email';
 import type { ApplicationStatus } from '@/lib/pipeline';
 import { STEP_LABEL, currentStep } from '@/lib/pipeline';
 
@@ -167,7 +168,12 @@ export default function ApplicationDetailPage() {
         interview_notes: notes || null,
       })
       .eq('id', app.id);
-    await sendSmsToUser(app.user_id, SMS.interviewInvite());
+    const firstName = profile?.name?.split(' ')[0];
+    const emailTmpl = EMAIL.interviewInvite(firstName);
+    await Promise.all([
+      sendSmsToUser(app.user_id, SMS.interviewInvite()),
+      sendEmailToUser(app.user_id, emailTmpl.subject, emailTmpl.html),
+    ]);
     setActing(false);
     loadAll();
   }
@@ -241,11 +247,25 @@ export default function ApplicationDetailPage() {
         : decision === 'declined'
         ? SMS.declined()
         : SMS.onHold();
-    await sendSmsToUser(app.user_id, smsBody);
+    const emailTmpl =
+      decision === 'approved_confirmed'
+        ? EMAIL.approvedConfirmed()
+        : decision === 'approved_waitlisted'
+        ? EMAIL.approvedWaitlisted()
+        : decision === 'declined'
+        ? EMAIL.declined()
+        : EMAIL.onHold();
+    await Promise.all([
+      sendSmsToUser(app.user_id, smsBody),
+      sendEmailToUser(app.user_id, emailTmpl.subject, emailTmpl.html),
+    ]);
 
     await supabase
       .from('applications')
-      .update({ decision_sms_sent_at: new Date().toISOString() })
+      .update({
+        decision_sms_sent_at: new Date().toISOString(),
+        decision_email_sent_at: new Date().toISOString(),
+      })
       .eq('id', app.id);
 
     setActing(false);

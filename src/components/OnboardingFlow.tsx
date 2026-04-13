@@ -5,6 +5,7 @@ import AssessmentRenderer from '@/components/AssessmentRenderer';
 import { loadApplicationState, setApplicationStatus } from '@/lib/application';
 import { currentStep, STEP_LABEL, PRICE_LABEL, type PipelineStep, type ApplicationState } from '@/lib/pipeline';
 import { sendSmsToUser, SMS } from '@/lib/sms';
+import { sendEmailToUser, EMAIL } from '@/lib/email';
 import type { AssessmentTemplateRow, AssessmentInstanceRow } from '@/types/database';
 
 // Visual progress bar — subset of steps we show as milestones.
@@ -515,7 +516,7 @@ function StepScheduleInterview({ uid, onNext }: { uid: string; onNext: () => voi
       interview_scheduled_at: new Date().toISOString(),
     });
 
-    // Send confirmation SMS with the chosen time
+    // Send confirmation SMS + email with the chosen time
     const chosenSlot = slots.find((s) => s.id === slotId);
     if (chosenSlot) {
       const whenLabel = new Date(chosenSlot.start_at).toLocaleString(undefined, {
@@ -525,7 +526,11 @@ function StepScheduleInterview({ uid, onNext }: { uid: string; onNext: () => voi
         hour: 'numeric',
         minute: '2-digit',
       });
-      await sendSmsToUser(uid, SMS.interviewConfirmed(whenLabel));
+      const emailTmpl = EMAIL.interviewConfirmed(whenLabel, chosenSlot.webex_link);
+      await Promise.all([
+        sendSmsToUser(uid, SMS.interviewConfirmed(whenLabel)),
+        sendEmailToUser(uid, emailTmpl.subject, emailTmpl.html),
+      ]);
     }
 
     setBooking(null);
