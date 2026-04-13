@@ -11,6 +11,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import AssessmentsPage from '@/pages/AssessmentsPage';
 import MessagesPage from '@/pages/MessagesPage';
 import SessionsPage from '@/pages/SessionsPage';
+import SessionDetailPage from '@/pages/SessionDetailPage';
 import PaymentPage from '@/pages/PaymentPage';
 import LeaderboardPage from '@/pages/LeaderboardPage';
 import DataExportPage from '@/pages/DataExportPage';
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="assessments" element={<AssessmentsPage />} />
           <Route path="messages" element={<MessagesPage />} />
           <Route path="sessions" element={<SessionsPage />} />
+          <Route path="sessions/:id" element={<SessionDetailPage />} />
           <Route path="payment" element={<PaymentPage />} />
           <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="export" element={<DataExportPage />} />
