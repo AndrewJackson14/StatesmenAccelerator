@@ -651,7 +651,6 @@ function StepAwaitingDecision() {
 function StepPayFee({
   uid,
   tier,
-  onNext,
 }: {
   uid: string;
   tier: 'deposit' | 'full';
@@ -667,24 +666,50 @@ function StepPayFee({
       ? 'You\'ve been approved and placed on the waitlist. Pay a $225 deposit now to hold your spot. When a cohort opens, the remaining $225 will be charged automatically.'
       : 'You\'ve been approved and assigned to a cohort. Pay the full $450 enrollment fee to confirm your spot.';
 
-  // TODO: Replace with real Stripe Checkout.
-  async function handleMockPay() {
+  async function handleStripeCheckout() {
     setBusy(true);
     setError(null);
-    const { error: payErr } = await supabase.from('payments').insert({
-      user_id: uid,
-      amount_cents: amountCents,
-      currency: 'usd',
-      purpose: tier,
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-    });
-    setBusy(false);
-    if (payErr) {
-      setError(payErr.message);
+
+    // 1. Create a pending payment row we can reference in Stripe metadata.
+    const { data: payment, error: payErr } = await supabase
+      .from('payments')
+      .insert({
+        user_id: uid,
+        amount_cents: amountCents,
+        currency: 'usd',
+        purpose: tier,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (payErr || !payment) {
+      setBusy(false);
+      setError(payErr?.message ?? 'Could not create payment record.');
       return;
     }
-    onNext();
+
+    // 2. Ask the edge function to create a Stripe Checkout session.
+    const { data, error: fnErr } = await supabase.functions.invoke(
+      'create-checkout-session',
+      {
+        body: {
+          payment_id: payment.id,
+          amount_cents: amountCents,
+          success_url: `${window.location.origin}/?payment=success`,
+          cancel_url: `${window.location.origin}/?payment=canceled`,
+        },
+      },
+    );
+
+    if (fnErr || !data?.url) {
+      setBusy(false);
+      setError(fnErr?.message ?? data?.error ?? 'Could not start checkout.');
+      return;
+    }
+
+    // 3. Redirect the whole window to Stripe-hosted Checkout.
+    window.location.href = data.url as string;
   }
 
   return (
@@ -698,10 +723,12 @@ function StepPayFee({
         <div className="font-serif text-2xl text-brass">{amountLabel}</div>
       </div>
       {error && <div className="text-sm text-red-400">{error}</div>}
-      <button className="btn-primary w-full" onClick={handleMockPay} disabled={busy}>
-        {busy ? 'Processing…' : `Pay ${amountLabel}`}
+      <button className="btn-primary w-full" onClick={handleStripeCheckout} disabled={busy}>
+        {busy ? 'Redirecting to Stripe…' : `Pay ${amountLabel} with Stripe`}
       </button>
-      <p className="text-center text-xs text-slate-500">Secure payment via Stripe</p>
+      <p className="text-center text-xs text-slate-500">
+        Secure payment via Stripe · Test card: 4242 4242 4242 4242
+      </p>
     </div>
   );
 }
