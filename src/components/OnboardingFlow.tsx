@@ -17,7 +17,6 @@ const MILESTONE_STEPS: PipelineStep[] = [
   'pay_full_fee',
   'expectations',
   'walkthrough',
-  'squad_pending',
   'active',
 ];
 
@@ -804,7 +803,10 @@ function StepWalkthrough({ uid, onNext }: { uid: string; onNext: () => void }) {
   async function finish() {
     await supabase
       .from('profiles')
-      .update({ onboarding_step: 'walkthrough_complete' })
+      .update({
+        onboarding_step: 'walkthrough_complete',
+        onboarding_complete: true,
+      })
       .eq('id', uid);
     onNext();
   }

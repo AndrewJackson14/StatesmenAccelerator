@@ -91,7 +91,8 @@ export function currentStep(state: ApplicationState): PipelineStep {
     if (!state.feePaid) return 'pay_full_fee';
     if (!state.expectationsAck) return 'expectations';
     if (!state.walkthroughDone) return 'walkthrough';
-    if (!state.squadAssigned) return 'squad_pending';
+    // Squad assignment happens later via automation — it no longer
+    // gates candidate access to the dashboard.
     return 'active';
   }
 
