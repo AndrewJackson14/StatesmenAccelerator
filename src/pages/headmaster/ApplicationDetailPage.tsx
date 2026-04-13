@@ -206,6 +206,19 @@ export default function ApplicationDetailPage() {
     await supabase.from('applications').update(updates).eq('id', app.id);
 
     if (decision === 'approved_confirmed' && chosenCohort) {
+      // Remove from Intake Pool (if present) and add to the real cohort.
+      const { data: pool } = await supabase
+        .from('cohorts')
+        .select('id')
+        .eq('name', 'Intake Pool')
+        .maybeSingle();
+      if (pool) {
+        await supabase
+          .from('cohort_members')
+          .delete()
+          .eq('user_id', app.user_id)
+          .eq('cohort_id', pool.id);
+      }
       await supabase.from('cohort_members').upsert(
         { cohort_id: chosenCohort, user_id: app.user_id, role: 'gentleman' },
         { onConflict: 'cohort_id,user_id' },
