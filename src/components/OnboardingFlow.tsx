@@ -508,8 +508,8 @@ function StepScheduleInterview({ uid, onNext }: { uid: string; onNext: () => voi
       return;
     }
 
-    // Mark the slot as booked
-    await supabase.from('interview_slots').update({ status: 'booked' }).eq('id', slotId);
+    // Slot status is flipped to 'booked' by the
+    // sync_interview_slot_status trigger on interview_bookings insert.
 
     // Flip application status
     await setApplicationStatus(uid, 'interview_scheduled', {
