@@ -117,7 +117,14 @@ export default function CreateSessionModal({ open, onClose, onCreated, defaultCo
     //   Phase 2b (weeks 7-9): 3 sessions/week Mon+Wed+Fri
     //   Phase 3 (weeks 10-13): 2 sessions/week Tue+Thu
     // Total: 32 sessions
+    //
+    // Snap the picked startDate back to the Monday of its week so
+    // weekday offsets (0=Mon .. 4=Fri) land on real calendar days
+    // regardless of which day the user picked.
     const start = new Date(`${startDate}T${startTime}`);
+    const jsDay = start.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const daysBackToMonday = jsDay === 0 ? 6 : jsDay - 1;
+    start.setDate(start.getDate() - daysBackToMonday);
     const rows: Array<{
       cohort_id: string;
       session_number: number;
